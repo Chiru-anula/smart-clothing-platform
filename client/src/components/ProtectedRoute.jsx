@@ -1,23 +1,15 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 function ProtectedRoute({ children }) {
-  const { loading, session, isAdmin, configError } = useAuth();
-
-  if (configError) {
-    return (
-      <div className="login-page">
-        <div className="login-card">
-          <h1>Supabase is not configured</h1>
-          <p>{configError}</p>
-          <p>Copy <code>client/.env.example</code> to <code>client/.env</code> and add your project keys.</p>
-        </div>
-      </div>
-    );
-  }
+  const { loading, session, isAdmin } = useAuth();
 
   if (loading) {
-    return <div className="page-message">Loading…</div>;
+    return (
+      <div className="page-message" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p>Loading Admin Console…</p>
+      </div>
+    );
   }
 
   if (!session) {
@@ -30,9 +22,12 @@ function ProtectedRoute({ children }) {
         <div className="login-card">
           <h1>Admin access required</h1>
           <p>
-            This account is signed in, but it is not an active administrator.
-            Link the Auth user to a <code>profiles</code> row with role = admin.
+            This account is signed in, but it does not have active administrator privileges.
+            Please sign in with an administrator account (e.g. <code>admin@smartclothing.lk</code>).
           </p>
+          <a href="/login" className="primary-btn" style={{ marginTop: '14px', textAlign: 'center' }}>
+            Back to Sign in
+          </a>
         </div>
       </div>
     );
