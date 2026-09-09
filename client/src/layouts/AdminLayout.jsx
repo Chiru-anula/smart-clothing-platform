@@ -8,6 +8,7 @@ const links = [
   { to: '/roles', label: 'User Roles', icon: '🛡️' },
   { to: '/reviews', label: 'Reviews', icon: '⭐' },
   { to: '/orders', label: 'Orders', icon: '📦' },
+  { to: '/loyalty-discounts', label: 'Loyalty & Discounts', icon: '🎁' },
   { to: '/reports', label: 'Sales & Analytics', icon: '📈' },
   { to: '/settings', label: 'System Settings', icon: '⚙️' },
 ];
@@ -27,8 +28,8 @@ function AdminLayout() {
         <div>
           <div className="logo">
             <span className="logo-badge">Enterprise Admin</span>
-            <h2>Ceylon Gem</h2>
-            <span>Smart Clothing Platform</span>
+            <h2>Ceylon Gem Clothing</h2>
+            <span>Clothing Business</span>
           </div>
 
           <nav>
@@ -46,10 +47,6 @@ function AdminLayout() {
           </nav>
         </div>
 
-        <div className="sidebar-footer">
-          <p>IE3121 Sprint 1 • Project ID: ISE_WD_0101_12</p>
-          <p style={{ marginTop: '4px', opacity: 0.8 }}>Sirimanna H.D.S.S (IT24100908)</p>
-        </div>
       </aside>
 
       <main className="main-content">

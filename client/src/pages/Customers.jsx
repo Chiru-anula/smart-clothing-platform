@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { getCustomers, saveCustomer, deleteCustomer } from '../services/dataService';
+import { useEffect, useState, useCallback } from 'react';
+import { getCustomers, saveCustomer, deleteCustomer, subscribeToUsers } from '../services/dataService';
 import { formatDate } from '../lib/format';
 
 const emptyForm = {
@@ -28,40 +28,7 @@ function Customers() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  async function loadData() {
-    setLoading(true);
-    try {
-      const data = await getCustomers();
-      setRows(data || []);
-      applyFilters(data || [], searchTerm, statusFilter);
-    } catch (err) {
-      setError(err.message || 'Failed to load customers');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    let isMounted = true;
-    getCustomers()
-      .then((data) => {
-        if (isMounted) {
-          setRows(data || []);
-          setFilteredRows(data || []);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) setError(err.message || 'Failed to load customers');
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  function applyFilters(data, search, status) {
+  const applyFilters = useCallback((data, search, status) => {
     let result = [...data];
     if (status !== 'all') {
       result = result.filter((r) => r.status === status);
@@ -77,7 +44,52 @@ function Customers() {
       );
     }
     setFilteredRows(result);
-  }
+  }, []);
+
+  const loadData = useCallback(async () => {
+    try {
+      const data = await getCustomers();
+      setRows(data || []);
+      applyFilters(data || [], searchTerm, statusFilter);
+    } catch (err) {
+      setError(err.message || 'Failed to load customers');
+    } finally {
+      setLoading(false);
+    }
+  }, [applyFilters, searchTerm, statusFilter]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getCustomers()
+      .then((data) => {
+        if (isMounted) {
+          setRows(data || []);
+          applyFilters(data || [], searchTerm, statusFilter);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) setError(err.message || 'Failed to load customers');
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    const unsubscribe = subscribeToUsers(() => {
+      if (isMounted) {
+        getCustomers().then((data) => {
+          if (isMounted) {
+            setRows(data || []);
+            applyFilters(data || [], searchTerm, statusFilter);
+          }
+        });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [applyFilters, searchTerm, statusFilter]);
 
   function handleSearchChange(e) {
     const val = e.target.value;
@@ -149,17 +161,11 @@ function Customers() {
     }
   }
 
-  const activeCount = rows.filter((r) => r.status === 'active').length;
-  const inactiveCount = rows.filter((r) => r.status !== 'active').length;
-
   return (
     <section className="dashboard-section">
       <div className="section-header">
         <div>
           <h2>Customer Account Management</h2>
-          <p>
-            Total: {rows.length} customers ({activeCount} Active, {inactiveCount} Inactive/Suspended)
-          </p>
         </div>
         <button type="button" className="primary-btn" onClick={openCreate}>
           + Register Customer

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { getUsersForRoles, updateUserRole, updateUserStatus, createUserWithRole } from '../services/dataService';
+import { useEffect, useState, useCallback } from 'react';
+import { getUsersForRoles, updateUserRole, updateUserStatus, createUserWithRole, subscribeToUsers } from '../services/dataService';
 import { formatDate } from '../lib/format';
 
 function Roles() {
@@ -21,40 +21,7 @@ function Roles() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  async function loadData() {
-    setLoading(true);
-    try {
-      const data = await getUsersForRoles();
-      setRows(data || []);
-      applyFilters(data || [], searchTerm, roleFilter);
-    } catch (err) {
-      setError(err.message || 'Failed to load user roles');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    let isMounted = true;
-    getUsersForRoles()
-      .then((data) => {
-        if (isMounted) {
-          setRows(data || []);
-          setFilteredRows(data || []);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) setError(err.message || 'Failed to load user roles');
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  function applyFilters(data, search, role) {
+  const applyFilters = useCallback((data, search, role) => {
     let result = [...data];
     if (role !== 'all') {
       result = result.filter((r) => r.role === role);
@@ -68,7 +35,52 @@ function Roles() {
       );
     }
     setFilteredRows(result);
-  }
+  }, []);
+
+  const loadData = useCallback(async () => {
+    try {
+      const data = await getUsersForRoles();
+      setRows(data || []);
+      applyFilters(data || [], searchTerm, roleFilter);
+    } catch (err) {
+      setError(err.message || 'Failed to load user roles');
+    } finally {
+      setLoading(false);
+    }
+  }, [applyFilters, searchTerm, roleFilter]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getUsersForRoles()
+      .then((data) => {
+        if (isMounted) {
+          setRows(data || []);
+          applyFilters(data || [], searchTerm, roleFilter);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) setError(err.message || 'Failed to load user roles');
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    const unsubscribe = subscribeToUsers(() => {
+      if (isMounted) {
+        getUsersForRoles().then((data) => {
+          if (isMounted) {
+            setRows(data || []);
+            applyFilters(data || [], searchTerm, roleFilter);
+          }
+        });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [applyFilters, searchTerm, roleFilter]);
 
   function handleSearch(e) {
     const val = e.target.value;
@@ -138,18 +150,11 @@ function Roles() {
     }
   }
 
-  const adminCount = rows.filter((r) => r.role === 'admin').length;
-  const managerCount = rows.filter((r) => r.role === 'store_manager').length;
-  const customerCount = rows.filter((r) => r.role === 'customer').length;
-
   return (
     <section className="dashboard-section">
       <div className="section-header">
         <div>
           <h2>User Role & Access Management</h2>
-          <p>
-            Role-Based Access Control (RBAC): {adminCount} Admins, {managerCount} Store Managers, {customerCount} Customers
-          </p>
         </div>
         <button type="button" className="primary-btn" onClick={() => setIsAddUserOpen(true)}>
           + Create Privileged User

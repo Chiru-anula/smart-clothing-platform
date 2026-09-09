@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { getStoreManagers, saveStoreManager, updateUserStatus } from '../services/dataService';
+import { useEffect, useState, useCallback } from 'react';
+import { getStoreManagers, saveStoreManager, updateUserStatus, subscribeToUsers } from '../services/dataService';
 
 const emptyForm = {
   full_name: '',
@@ -24,42 +24,7 @@ function StoreManagers() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  async function loadData() {
-    setLoading(true);
-    try {
-      const data = await getStoreManagers();
-      setRows(data.managers || []);
-      setStores(data.stores || []);
-      applyFilters(data.managers || [], searchTerm);
-    } catch (err) {
-      setError(err.message || 'Failed to load store managers');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    let isMounted = true;
-    getStoreManagers()
-      .then((data) => {
-        if (isMounted) {
-          setRows(data.managers || []);
-          setStores(data.stores || []);
-          setFilteredRows(data.managers || []);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) setError(err.message || 'Failed to load store managers');
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  function applyFilters(data, search) {
+  const applyFilters = useCallback((data, search) => {
     if (!search.trim()) {
       setFilteredRows(data);
       return;
@@ -73,7 +38,55 @@ function StoreManagers() {
         m.stores?.[0]?.name?.toLowerCase().includes(q),
     );
     setFilteredRows(res);
-  }
+  }, []);
+
+  const loadData = useCallback(async () => {
+    try {
+      const data = await getStoreManagers();
+      setRows(data.managers || []);
+      setStores(data.stores || []);
+      applyFilters(data.managers || [], searchTerm);
+    } catch (err) {
+      setError(err.message || 'Failed to load store managers');
+    } finally {
+      setLoading(false);
+    }
+  }, [applyFilters, searchTerm]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getStoreManagers()
+      .then((data) => {
+        if (isMounted) {
+          setRows(data.managers || []);
+          setStores(data.stores || []);
+          applyFilters(data.managers || [], searchTerm);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) setError(err.message || 'Failed to load store managers');
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    const unsubscribe = subscribeToUsers(() => {
+      if (isMounted) {
+        getStoreManagers().then((data) => {
+          if (isMounted) {
+            setRows(data.managers || []);
+            setStores(data.stores || []);
+            applyFilters(data.managers || [], searchTerm);
+          }
+        });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [applyFilters, searchTerm]);
 
   function handleSearchChange(e) {
     const val = e.target.value;
@@ -147,7 +160,6 @@ function StoreManagers() {
       <div className="section-header">
         <div>
           <h2>Store Manager Management</h2>
-          <p>Supervise store branch managers, store assignments, and contact information</p>
         </div>
         <button type="button" className="primary-btn" onClick={openCreate}>
           + Add Store Manager

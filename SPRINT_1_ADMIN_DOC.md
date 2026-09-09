@@ -43,11 +43,11 @@ The table below maps all **15 activities** extracted in Section 7 of the Sprint 
 | **8** | Retrieve order information | System | `client/src/services/dataService.js` | `getOrders()` and `getOrderDetails()` retrieve order totals, customer details, and items. |
 | **9** | Update order status | Administrator | `client/src/pages/Orders.jsx` | Updates order state (`pending`, `processing`, `shipped`, `delivered`, `cancelled`) + logs history. |
 | **10** | Manage user roles | Administrator | `client/src/pages/Roles.jsx` | RBAC matrix (`admin`, `store_manager`, `customer`), status toggling, lockout guard. |
-| **11** | Generate sales reports | System | `client/src/pages/Reports.jsx` | Aggregates non-cancelled orders by status; generates instantaneous metrics. |
-| **12** | Generate revenue analytics | System | `client/src/pages/Reports.jsx` | Tracks collected payments vs pending vs refunded amounts; average order value (AOV). |
-| **13** | Generate customer analytics | System | `client/src/pages/Reports.jsx` | Identifies top customers by cumulative spending and active account ratio. |
-| **14** | Update system settings | Administrator | `client/src/pages/Settings.jsx` | Configures business name, hotline, currency, shipping fees, tax rate, maintenance mode. |
-| **15** | Save administrative changes | System | `client/src/services/dataService.js` | Atomic persistence to Supabase PostgreSQL with localStorage fallback. |
+| **11** | Generate sales reports | System | `client/src/pages/Reports.jsx` | Dedicated navigation tab retained; module scheduled for future development. |
+| **12** | Generate revenue analytics | System | `client/src/pages/Reports.jsx` | Dedicated navigation tab retained; module scheduled for future development. |
+| **13** | Generate customer analytics | System | `client/src/pages/Reports.jsx` | Dedicated navigation tab retained; module scheduled for future development. |
+| **14** | Update system settings | Administrator | `client/src/pages/Settings.jsx` | Dedicated navigation tab retained; module scheduled for future development. |
+| **15** | Save administrative changes | System | `client/src/services/dataService.js` | Direct persistence to Supabase database tables with local cache synchronization. |
 
 ---
 

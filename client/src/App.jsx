@@ -11,6 +11,7 @@ import Reviews from './pages/Reviews';
 import Orders from './pages/Orders';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import LoyaltyDiscounts from './pages/LoyaltyDiscounts';
 import './App.css';
 
 function App() {
@@ -33,6 +34,9 @@ function App() {
             <Route path="roles" element={<Roles />} />
             <Route path="reviews" element={<Reviews />} />
             <Route path="orders" element={<Orders />} />
+            <Route path="loyalty-discounts" element={<LoyaltyDiscounts />} />
+            <Route path="loyalty" element={<LoyaltyDiscounts />} />
+            <Route path="discounts" element={<LoyaltyDiscounts />} />
             <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
           </Route>

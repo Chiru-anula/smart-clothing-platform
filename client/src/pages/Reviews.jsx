@@ -1,21 +1,49 @@
-import { useEffect, useState } from 'react';
-import { getReviews, moderateReview } from '../services/dataService';
-import { useAuth } from '../context';
+import { useEffect, useState, useCallback } from 'react';
+import { getReviews, moderateReview, createReview, deleteReview, subscribeToReviews } from '../services/dataService';
 import { formatDate } from '../lib/format';
 
+const emptyReviewForm = {
+  customer_name: '',
+  customer_email: '',
+  product_name: '',
+  rating: 5,
+  comment: '',
+  status: 'pending',
+};
+
 function Reviews() {
-  const { profile } = useAuth();
   const [rows, setRows] = useState([]);
   const [filteredRows, setFilteredRows] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('pending'); // default to pending for moderation
+  const [statusFilter, setStatusFilter] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [form, setForm] = useState(emptyReviewForm);
+
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  async function loadData() {
-    setLoading(true);
+  const applyFilters = useCallback((data, search, status) => {
+    let result = [...data];
+    if (status !== 'all') {
+      result = result.filter((r) => r.status === status);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (r) =>
+          r.customer_name?.toLowerCase().includes(q) ||
+          r.customer_email?.toLowerCase().includes(q) ||
+          r.product_name?.toLowerCase().includes(q) ||
+          r.comment?.toLowerCase().includes(q),
+      );
+    }
+    setFilteredRows(result);
+  }, []);
+
+  const loadData = useCallback(async () => {
     try {
       const data = await getReviews();
       setRows(data || []);
@@ -25,7 +53,7 @@ function Reviews() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [applyFilters, searchTerm, statusFilter]);
 
   useEffect(() => {
     let isMounted = true;
@@ -33,8 +61,7 @@ function Reviews() {
       .then((data) => {
         if (isMounted) {
           setRows(data || []);
-          const pendingOnly = (data || []).filter((r) => r.status === 'pending');
-          setFilteredRows(pendingOnly);
+          applyFilters(data || [], searchTerm, statusFilter);
         }
       })
       .catch((err) => {
@@ -43,26 +70,27 @@ function Reviews() {
       .finally(() => {
         if (isMounted) setLoading(false);
       });
+
+    const unsubscribe = subscribeToReviews(() => {
+      if (isMounted) {
+        getReviews().then((data) => {
+          if (isMounted) {
+            setRows(data || []);
+            applyFilters(data || [], searchTerm, statusFilter);
+          }
+        });
+      }
+    });
+
     return () => {
       isMounted = false;
+      unsubscribe();
     };
-  }, []);
+  }, [applyFilters, searchTerm, statusFilter]);
 
-  function applyFilters(data, search, status) {
-    let result = [...data];
-    if (status !== 'all') {
-      result = result.filter((r) => r.status === status);
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (r) =>
-          r.profiles?.full_name?.toLowerCase().includes(q) ||
-          r.products?.name?.toLowerCase().includes(q) ||
-          r.comment?.toLowerCase().includes(q),
-      );
-    }
-    setFilteredRows(result);
+  function handleFilter(status) {
+    setStatusFilter(status);
+    applyFilters(rows, searchTerm, status);
   }
 
   function handleSearch(e) {
@@ -71,19 +99,55 @@ function Reviews() {
     applyFilters(rows, val, statusFilter);
   }
 
-  function handleFilter(status) {
-    setStatusFilter(status);
-    applyFilters(rows, searchTerm, status);
+  function openAddModal() {
+    setForm(emptyReviewForm);
+    setIsAddOpen(true);
+    setError('');
+  }
+
+  async function handleAddReview(e) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    setSuccessMsg('');
+
+    try {
+      await createReview({
+        ...form,
+        rating: Number(form.rating) || 5,
+      });
+      setSuccessMsg(`Review for "${form.product_name}" submitted to moderation queue.`);
+      setIsAddOpen(false);
+      setForm(emptyReviewForm);
+      await loadData();
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      setError(err.message || 'Failed to submit review');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleModerate(review, nextStatus) {
     try {
-      await moderateReview(review.id, nextStatus, profile?.id || null);
-      setSuccessMsg(`Review for "${review.products?.name}" has been ${nextStatus}.`);
+      await moderateReview(review.id, nextStatus);
+      setSuccessMsg(`Review for "${review.product_name}" has been ${nextStatus}.`);
       await loadData();
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       setError(err.message || 'Failed to moderate review');
+    }
+  }
+
+  async function handleDeleteReview(review) {
+    if (!window.confirm(`Are you sure you want to permanently delete the review for "${review.product_name}"?`)) return;
+    try {
+      await deleteReview(review.id);
+      setSuccessMsg(`Review for "${review.product_name}" was deleted.`);
+      await loadData();
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to delete review');
     }
   }
 
@@ -96,10 +160,10 @@ function Reviews() {
       <div className="section-header">
         <div>
           <h2>Customer Review Moderation</h2>
-          <p>
-            Review customer feedback before publishing to the public storefront ({pendingCount} pending moderation)
-          </p>
         </div>
+        <button type="button" className="primary-btn" onClick={openAddModal}>
+          + Submit Review
+        </button>
       </div>
 
       {error ? <div className="alert">{error}</div> : null}
@@ -110,7 +174,7 @@ function Reviews() {
         <input
           type="text"
           className="search-input"
-          placeholder="🔍 Search reviewer, product, or comment…"
+          placeholder="🔍 Search reviewer, product, or comment content…"
           value={searchTerm}
           onChange={handleSearch}
         />
@@ -121,7 +185,7 @@ function Reviews() {
             className={`tab-btn ${statusFilter === 'pending' ? 'active' : ''}`}
             onClick={() => handleFilter('pending')}
           >
-            Pending Moderation ({pendingCount})
+            Pending ({pendingCount})
           </button>
           <button
             type="button"
@@ -147,48 +211,126 @@ function Reviews() {
         </div>
       </div>
 
+      {/* Submit Review Modal */}
+      {isAddOpen && (
+        <div className="modal-overlay" onClick={() => setIsAddOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Submit Customer Review</h3>
+              <button type="button" className="close-btn" onClick={() => setIsAddOpen(false)}>
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleAddReview}>
+              <div className="modal-body">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <label>
+                    Customer Full Name *
+                    <input
+                      placeholder="e.g. Kasun Jayawardena"
+                      value={form.customer_name}
+                      onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Customer Email
+                    <input
+                      type="email"
+                      placeholder="e.g. kasun@example.com"
+                      value={form.customer_email}
+                      onChange={(e) => setForm({ ...form, customer_email: e.target.value })}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <label>
+                    Product Name *
+                    <input
+                      placeholder="e.g. Classic Cotton Polo Shirt"
+                      value={form.product_name}
+                      onChange={(e) => setForm({ ...form, product_name: e.target.value })}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Star Rating (1 - 5) *
+                    <select
+                      value={form.rating}
+                      onChange={(e) => setForm({ ...form, rating: Number(e.target.value) })}
+                    >
+                      <option value="5">⭐⭐⭐⭐⭐ (5 Stars - Excellent)</option>
+                      <option value="4">⭐⭐⭐⭐ (4 Stars - Good)</option>
+                      <option value="3">⭐⭐⭐ (3 Stars - Average)</option>
+                      <option value="2">⭐⭐ (2 Stars - Poor)</option>
+                      <option value="1">⭐ (1 Star - Terrible)</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label>
+                  Customer Feedback / Comment *
+                  <textarea
+                    rows="3"
+                    placeholder="e.g. The fabric quality is exceptional and the delivery arrived on time."
+                    value={form.comment}
+                    onChange={(e) => setForm({ ...form, comment: e.target.value })}
+                    required
+                  />
+                </label>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="ghost-btn" onClick={() => setIsAddOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="primary-btn" disabled={saving}>
+                  {saving ? 'Submitting…' : 'Submit Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Reviews Table */}
       <div className="data-table">
         <div className="table-header cols-6">
           <span>Customer</span>
           <span>Product Item</span>
           <span>Rating</span>
-          <span>Comment & Feedback</span>
+          <span>Customer Feedback</span>
           <span>Status</span>
           <span>Moderation Actions</span>
         </div>
         {loading ? (
           <div className="empty-row">Loading customer reviews…</div>
         ) : filteredRows.length === 0 ? (
-          <div className="empty-row">
-            No reviews found in &quot;{statusFilter}&quot; queue.
+          <div className="empty-row" style={{ padding: '36px 16px', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontWeight: 500 }}>No reviews in &quot;{statusFilter}&quot; queue.</p>
+            <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#64748b' }}>
+              Click <strong>+ Submit Review</strong> above to add customer feedback.
+            </p>
           </div>
         ) : (
           filteredRows.map((row) => (
             <div className="table-row cols-6" key={row.id}>
               <div>
-                <strong>{row.profiles?.full_name || 'Customer'}</strong>
-                <small style={{ color: '#6b7280', display: 'block' }}>
-                  {formatDate(row.created_at)}
-                </small>
+                <strong style={{ display: 'block' }}>{row.customer_name}</strong>
+                <small style={{ color: '#64748b' }}>{formatDate(row.created_at)}</small>
               </div>
 
               <div>
-                <strong>{row.products?.name || 'Item'}</strong>
-                {row.products?.sku && (
-                  <small style={{ color: '#6b7280', display: 'block' }}>{row.products.sku}</small>
-                )}
+                <strong style={{ color: '#0f172a' }}>{row.product_name}</strong>
               </div>
 
-              <span className="star-rating">
+              <span style={{ fontSize: '14px', color: '#f59e0b', letterSpacing: '2px' }}>
                 {'★'.repeat(row.rating || 0)}
-                {'☆'.repeat(5 - (row.rating || 0))}
-                <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '4px' }}>
-                  ({row.rating}/5)
-                </span>
+                <span style={{ color: '#cbd5e1' }}>{'★'.repeat(Math.max(0, 5 - (row.rating || 0)))}</span>
               </span>
 
-              <span style={{ fontStyle: 'italic', color: '#374151' }}>
+              <span style={{ fontStyle: 'italic', color: '#334155', fontSize: '13px' }}>
                 &ldquo;{row.comment}&rdquo;
               </span>
 
@@ -200,7 +342,7 @@ function Reviews() {
                 {row.status !== 'approved' && (
                   <button
                     type="button"
-                    style={{ color: '#166534', fontWeight: 700 }}
+                    style={{ color: '#166534', fontWeight: 600, background: '#f0fdf4', padding: '4px 8px', borderRadius: '6px' }}
                     onClick={() => handleModerate(row, 'approved')}
                   >
                     ✓ Approve
@@ -209,12 +351,20 @@ function Reviews() {
                 {row.status !== 'rejected' && (
                   <button
                     type="button"
-                    className="danger"
+                    style={{ color: '#991b1b', fontWeight: 600, background: '#fef2f2', padding: '4px 8px', borderRadius: '6px' }}
                     onClick={() => handleModerate(row, 'rejected')}
                   >
                     ✕ Reject
                   </button>
                 )}
+                <button
+                  type="button"
+                  style={{ color: '#64748b', fontWeight: 600, background: '#f1f5f9', padding: '4px 8px', borderRadius: '6px' }}
+                  onClick={() => handleDeleteReview(row)}
+                  title="Delete review"
+                >
+                  Delete
+                </button>
               </span>
             </div>
           ))

@@ -76,38 +76,9 @@ insert into public.inventory (product_id, variant_id, store_id, quantity, min_st
   ('66666666-6666-6666-6666-666666666663', '77777777-7777-7777-7777-777777777773', '44444444-4444-4444-4444-444444444442', 10, 4),
   ('66666666-6666-6666-6666-666666666665', null, '44444444-4444-4444-4444-444444444442', 3, 8);
 
-insert into public.orders (id, order_number, customer_id, store_id, status, subtotal, total_amount, shipping_address, created_at) values
-  ('88888888-8888-8888-8888-888888888881', 'ORD-001001', '33333333-3333-3333-3333-333333333331', '44444444-4444-4444-4444-444444444441', 'pending', 6500, 6500, '12 Galle Road, Colombo', now() - interval '2 days'),
-  ('88888888-8888-8888-8888-888888888882', 'ORD-001002', '33333333-3333-3333-3333-333333333332', '44444444-4444-4444-4444-444444444441', 'processing', 4500, 4500, '88 Kandy Road, Kandy', now() - interval '5 days'),
-  ('88888888-8888-8888-8888-888888888883', 'ORD-001003', '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444442', 'delivered', 8000, 8000, '5 Beach Road, Galle', now() - interval '18 days'),
-  ('88888888-8888-8888-8888-888888888884', 'ORD-001004', '33333333-3333-3333-3333-333333333335', '44444444-4444-4444-4444-444444444442', 'shipped', 4000, 4000, '9 Temple Road, Matara', now() - interval '3 days'),
-  ('88888888-8888-8888-8888-888888888885', 'ORD-001005', '33333333-3333-3333-3333-333333333331', '44444444-4444-4444-4444-444444444441', 'cancelled', 7200, 7200, '12 Galle Road, Colombo', now() - interval '12 days');
+-- Sprint 1 starts with no orders, so dashboard sales metrics begin at zero.
 
-insert into public.order_items (order_id, product_id, product_name, quantity, unit_price, line_total) values
-  ('88888888-8888-8888-8888-888888888881', '66666666-6666-6666-6666-666666666661', 'Linen Shirt', 1, 6500, 6500),
-  ('88888888-8888-8888-8888-888888888882', '66666666-6666-6666-6666-666666666662', 'Slim Chinos', 1, 4500, 4500),
-  ('88888888-8888-8888-8888-888888888883', '66666666-6666-6666-6666-666666666663', 'Cotton Dress', 1, 8000, 8000),
-  ('88888888-8888-8888-8888-888888888884', '66666666-6666-6666-6666-666666666665', 'Kids Tee', 1, 2200, 2200),
-  ('88888888-8888-8888-8888-888888888884', '66666666-6666-6666-6666-666666666666', 'Kids Shorts', 1, 1800, 1800),
-  ('88888888-8888-8888-8888-888888888885', '66666666-6666-6666-6666-666666666664', 'Knit Cardigan', 1, 7200, 7200);
-
-insert into public.order_status_history (order_id, from_status, to_status, note) values
-  ('88888888-8888-8888-8888-888888888882', 'pending', 'processing', 'Payment confirmed'),
-  ('88888888-8888-8888-8888-888888888883', 'pending', 'processing', 'Packed'),
-  ('88888888-8888-8888-8888-888888888883', 'processing', 'shipped', 'Handed to courier'),
-  ('88888888-8888-8888-8888-888888888883', 'shipped', 'delivered', 'Delivered to customer');
-
-insert into public.payments (order_id, amount, status, method, paid_at) values
-  ('88888888-8888-8888-8888-888888888881', 6500, 'pending', 'card', null),
-  ('88888888-8888-8888-8888-888888888882', 4500, 'paid', 'card', now() - interval '5 days'),
-  ('88888888-8888-8888-8888-888888888883', 8000, 'paid', 'bank_transfer', now() - interval '18 days'),
-  ('88888888-8888-8888-8888-888888888884', 4000, 'paid', 'card', now() - interval '3 days'),
-  ('88888888-8888-8888-8888-888888888885', 7200, 'refunded', 'card', now() - interval '11 days');
-
-insert into public.reviews (customer_id, product_id, order_id, rating, comment, status) values
-  ('33333333-3333-3333-3333-333333333333', '66666666-6666-6666-6666-666666666663', '88888888-8888-8888-8888-888888888883', 5, 'Beautiful dress and good fit.', 'approved'),
-  ('33333333-3333-3333-3333-333333333332', '66666666-6666-6666-6666-666666666662', '88888888-8888-8888-8888-888888888882', 4, 'Nice quality, shipping was a bit slow.', 'pending'),
-  ('33333333-3333-3333-3333-333333333331', '66666666-6666-6666-6666-666666666661', '88888888-8888-8888-8888-888888888881', 2, 'Colour looked different from the photo.', 'pending');
+-- Sprint 1 starts with no reviews linked to demo orders.
 
 insert into public.wishlists (customer_id, product_id) values
   ('33333333-3333-3333-3333-333333333331', '66666666-6666-6666-6666-666666666664'),

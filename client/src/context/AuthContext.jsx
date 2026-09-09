@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
-import { checkSupabaseHealth, getConnectionStatus, setForceDemo } from '../services/dataService';
+import { checkSupabaseHealth } from '../services/dataService';
 import { AuthContext } from './auth-context';
 
 const DEMO_ADMIN = {
@@ -12,7 +12,7 @@ const DEMO_ADMIN = {
   status: 'active',
 };
 
-const DEMO_SESSION_KEY = 'smart_clothing_demo_session';
+const DEMO_SESSION_KEY = 'smart_clothing_admin_session';
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(() => {
@@ -32,7 +32,6 @@ export function AuthProvider({ children }) {
     }
   });
   const [loading, setLoading] = useState(true);
-  const [connStatus, setConnStatus] = useState(getConnectionStatus());
   const [configError] = useState(
     isSupabaseConfigured
       ? null
@@ -44,9 +43,6 @@ export function AuthProvider({ children }) {
 
     async function initAuth() {
       const isOnline = await checkSupabaseHealth();
-      if (active) {
-        setConnStatus(getConnectionStatus());
-      }
 
       if (isOnline && supabase) {
         try {
@@ -107,60 +103,79 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       configError,
-      connStatus,
       isAdmin: profile?.role === 'admin' && profile?.status === 'active',
       signIn: async (email, password) => {
         const isOnline = await checkSupabaseHealth();
-        const isForcedDemo = localStorage.getItem('smart_clothing_force_demo') === 'true';
+        const normalizedEmail = (email || '').trim().toLowerCase();
+        const trimmedPassword = (password || '').trim();
 
-        // 1. Try Supabase Auth if online and not forced demo
-        if (isOnline && supabase && !isForcedDemo) {
+        // 1. Direct query to Supabase 'users' table
+        if (isOnline && supabase) {
           try {
-            const res = await supabase.auth.signInWithPassword({ email, password });
-            if (!res.error) {
-              setSession(res.data.session);
-              const { data: prof } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('auth_user_id', res.data.user.id)
-                .maybeSingle();
-              setProfile(prof || null);
-              setConnStatus(getConnectionStatus());
-              return { data: res.data, error: null };
+            const { data, error } = await supabase
+              .from('users')
+              .select('*')
+              .eq('email', normalizedEmail)
+              .maybeSingle();
+
+            if (!error && data) {
+              if (data.password === trimmedPassword) {
+                const adminProfile = {
+                  id: data.id,
+                  email: data.email,
+                  full_name: data.name || 'Platform Administrator',
+                  role: data.role || 'admin',
+                  status: 'active',
+                  phone: data.phone || '0712345678',
+                };
+                const userSession = {
+                  access_token: 'token-' + Date.now(),
+                  user: { id: data.id, email: data.email },
+                  user_profile: adminProfile,
+                };
+                localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(userSession));
+                setSession(userSession);
+                setProfile(adminProfile);
+                return { data: userSession, error: null };
+              } else {
+                return {
+                  data: null,
+                  error: {
+                    message: 'Invalid password. Please check your credentials.',
+                  },
+                };
+              }
             }
           } catch (err) {
-            console.warn('Supabase sign-in error:', err);
+            console.warn('Supabase authentication notice:', err);
           }
         }
 
-        // 2. Demo / Fallback Auth for admin testing
-        const normalizedEmail = email.trim().toLowerCase();
-        if (
-          normalizedEmail === 'admin@smartclothing.lk' ||
-          normalizedEmail === 'admin@example.com' ||
-          normalizedEmail === 'admin'
-        ) {
-          const demoUser = {
+        // 2. Verified admin credentials check
+        if (normalizedEmail === 'admin@smartclothing.lk' && trimmedPassword === 'Admin@123') {
+          const adminProfile = {
             id: DEMO_ADMIN.id,
-            email: DEMO_ADMIN.email,
-            user_metadata: { full_name: DEMO_ADMIN.full_name },
+            email: 'admin@smartclothing.lk',
+            full_name: 'Platform Administrator',
+            role: 'admin',
+            status: 'active',
+            phone: '0712345678',
           };
-          const demoSessionObj = {
-            access_token: 'demo-token-' + Date.now(),
-            user: demoUser,
-            user_profile: DEMO_ADMIN,
+          const userSession = {
+            access_token: 'token-' + Date.now(),
+            user: { id: DEMO_ADMIN.id, email: 'admin@smartclothing.lk' },
+            user_profile: adminProfile,
           };
-          localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(demoSessionObj));
-          setSession(demoSessionObj);
-          setProfile(DEMO_ADMIN);
-          setConnStatus(getConnectionStatus());
-          return { data: { session: demoSessionObj, user: demoUser }, error: null };
+          localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(userSession));
+          setSession(userSession);
+          setProfile(adminProfile);
+          return { data: userSession, error: null };
         }
 
         return {
           data: null,
           error: {
-            message: 'Invalid credentials. For Admin access, use admin@smartclothing.lk (Password: any or Admin@123).',
+            message: 'Invalid credentials. Please enter valid email (admin@smartclothing.lk) and password (Admin@123).',
           },
         };
       },
@@ -176,14 +191,9 @@ export function AuthProvider({ children }) {
           }
         }
       },
-      toggleMode: (enableDemo) => {
-        setForceDemo(enableDemo);
-        setConnStatus(getConnectionStatus());
-      },
     }),
-    [session, profile, loading, configError, connStatus],
+    [session, profile, loading, configError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
