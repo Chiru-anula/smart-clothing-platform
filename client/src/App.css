@@ -6,12 +6,12 @@
 
 body {
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f8fafc;
+  background-color: #0f172a;
   background-image: 
-    linear-gradient(rgba(248, 250, 252, 0.94), rgba(248, 250, 252, 0.94)),
-    url('/clothing-pattern-light.png');
+    linear-gradient(rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.92)),
+    url('/clothing-pattern-dark.png');
   background-repeat: repeat;
-  background-size: 360px 360px;
+  background-size: 320px 320px;
   background-attachment: fixed;
   color: #0f172a;
   line-height: 1.5;
@@ -145,7 +145,6 @@ nav {
   flex-wrap: wrap;
 }
 
-.topbar h1,
 .login-card h1 {
   font-size: 26px;
   font-weight: 700;
@@ -153,8 +152,16 @@ nav {
   margin: 2px 0 4px;
 }
 
+.topbar h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 2px 0 4px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
 .eyebrow {
-  color: #6366f1;
+  color: #a5b4fc;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -210,11 +217,12 @@ nav {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #ffffff;
+  background: rgba(30, 41, 59, 0.85);
+  backdrop-filter: blur(8px);
   padding: 8px 14px;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .profile-circle {
@@ -233,12 +241,23 @@ nav {
 .admin-profile strong {
   display: block;
   font-size: 13px;
-  color: #111827;
+  color: #ffffff;
 }
 
 .admin-profile small {
-  color: #6b7280;
+  color: #94a3b8;
   font-size: 12px;
+}
+
+.admin-profile .ghost-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.admin-profile .ghost-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
 }
 
 /* KPI Dashboard Cards */
@@ -253,8 +272,8 @@ nav {
   background: #ffffff;
   border-radius: 14px;
   padding: 22px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   justify-content: space-between;
@@ -263,7 +282,7 @@ nav {
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
 }
 
 .card p {
@@ -301,8 +320,8 @@ nav {
   border-radius: 14px;
   padding: 26px;
   margin-bottom: 26px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .section-header {
